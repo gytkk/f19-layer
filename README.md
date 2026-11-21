@@ -4,7 +4,7 @@ A macOS 13+ login-session helper. Pressing Right Command or F18 posts a marked F
 
 Right Shift is a dedicated keyboard layer, not a capitalization key. On the physical US-layout positions, [ sends Up, ; sends Left, ' sends Right, and / sends Down. Other keys pass through without Right Shift. Left Shift and other modifiers still work. Pointer events are outside the keyboard layer.
 
-The menu bar shows `가` for Korean and `A` for English. It follows the selected macOS input source, including changes made outside F19Layer. Other or unidentified sources show `·`. Hover over the indicator for the source name. Click it to inspect the mappings, toggle Right Command switching, assign a physical US-layout key to each Right Shift arrow, or quit. Changes apply immediately and persist across launches. Unassign a key before moving it to another direction.
+The menu bar shows `가` for Korean and `A` for English. It follows the selected macOS input source, including changes made outside F19Layer. Other or unidentified sources show `·`. Hover over the indicator for the source name. Click the indicator and choose **Layer config** to view or edit the physical US-layout key assigned to each Right Shift arrow in a separate window. The menu also lets you toggle Right Command switching or quit. Changes apply immediately and persist across launches. Unassign a key before moving it to another direction.
 
 ## Credits and license
 

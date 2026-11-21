@@ -10,6 +10,8 @@ final class MappingMenu: NSObject, NSMenuDelegate {
     let apply: ([Int: Int], Bool) -> Void
     private var arrows = Keyboard.arrows
     private var command = true
+    private var configWindow: NSWindow?
+    private var pickers: [NSPopUpButton] = []
 
     init(defaults: UserDefaults = .standard, apply: @escaping ([Int: Int], Bool) -> Void) {
         self.defaults = defaults
@@ -37,23 +39,7 @@ final class MappingMenu: NSObject, NSMenuDelegate {
         toggle.target = self
         toggle.state = command ? .on : .off
         menu.addItem(.separator())
-        menu.addItem(withTitle: "Right Shift layer", action: nil, keyEquivalent: "").isEnabled = false
-        for (label, direction) in Self.directions {
-            let current = arrows.first { $0.value == direction }?.key
-            let name = Self.keys.first { $0.1 == current }?.0
-            let row = menu.addItem(withTitle: "\(label): \(name == " " ? "Space" : name ?? "Unassigned")", action: nil, keyEquivalent: "")
-            let options = NSMenu()
-            options.autoenablesItems = false
-            for (keyName, key) in [("Unassigned", -1)] + Self.keys {
-                let option = options.addItem(withTitle: keyName == " " ? "Space" : keyName, action: #selector(bind(_:)), keyEquivalent: "")
-                option.target = self
-                option.tag = key
-                option.representedObject = direction
-                option.state = key == (current ?? -1) ? .on : .off
-                option.isEnabled = arrows[key] == nil || arrows[key] == direction
-            }
-            row.submenu = options
-        }
+        menu.addItem(withTitle: "Layer config", action: #selector(openConfig), keyEquivalent: "").target = self
         menu.addItem(.separator())
         menu.addItem(withTitle: "Quit F19Layer", action: #selector(NSApplication.terminate(_:)), keyEquivalent: "q").target = NSApp
     }
@@ -64,10 +50,59 @@ final class MappingMenu: NSObject, NSMenuDelegate {
         apply(arrows, command)
     }
 
-    @objc private func bind(_ item: NSMenuItem) {
-        guard let direction = item.representedObject as? Int else { return }
+    @objc private func openConfig() {
+        if configWindow == nil {
+            let grid = NSGridView()
+            grid.rowSpacing = 8
+            grid.columnSpacing = 16
+            for (label, direction) in Self.directions {
+                let picker = NSPopUpButton()
+                picker.tag = direction
+                picker.target = self
+                picker.action = #selector(bind(_:))
+                picker.autoenablesItems = false
+                picker.setAccessibilityLabel("Right Shift key for " + label)
+                for (name, key) in [("Unassigned", -1)] + Self.keys {
+                    picker.addItem(withTitle: name == " " ? "Space" : name)
+                    picker.lastItem?.tag = key
+                }
+                grid.addRow(with: [NSTextField(labelWithString: label), picker])
+                pickers.append(picker)
+            }
+            let hint = NSTextField(labelWithString: "Choose the key to hold with Right Shift for each arrow.")
+            let content = NSStackView(views: [hint, grid])
+            content.orientation = .vertical
+            content.alignment = .leading
+            content.spacing = 18
+            content.edgeInsets = NSEdgeInsets(top: 20, left: 24, bottom: 20, right: 24)
+            let window = NSWindow(contentRect: NSRect(origin: .zero, size: content.fittingSize),
+                                  styleMask: [.titled, .closable], backing: .buffered, defer: false)
+            window.contentView = content
+            window.title = "Layer config"
+            window.isReleasedWhenClosed = false
+            window.center()
+            configWindow = window
+        }
+        refreshPickers()
+        NSApp.activate(ignoringOtherApps: true)
+        configWindow?.makeKeyAndOrderFront(nil)
+    }
+
+    private func refreshPickers() {
+        for picker in pickers {
+            for item in picker.itemArray {
+                item.isEnabled = arrows[item.tag] == nil || arrows[item.tag] == picker.tag
+            }
+            picker.selectItem(withTag: arrows.first { $0.value == picker.tag }?.key ?? -1)
+        }
+    }
+
+    @objc private func bind(_ picker: NSPopUpButton) {
+        guard let item = picker.selectedItem, item.isEnabled else { return }
+        let direction = picker.tag
         arrows = arrows.filter { $0.value != direction }
         if item.tag >= 0 { arrows[item.tag] = direction }
+        refreshPickers()
         defaults.set(Dictionary(uniqueKeysWithValues: arrows.map { (String($0.key), $0.value) }), forKey: "arrowBindings")
         apply(arrows, command)
     }
